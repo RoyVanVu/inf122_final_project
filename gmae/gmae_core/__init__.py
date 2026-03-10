@@ -1,1 +1,1 @@
-from .profile_manager import PlayerProfile
+from .profile_manager import PlayerProfile, ProfileFacade

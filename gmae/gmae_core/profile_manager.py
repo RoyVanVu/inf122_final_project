@@ -53,3 +53,52 @@ class PlayerProfile:
             f"quests={len(self.quest_history)}, "
             f"achievements={len(self.achievements)})"
         )
+    
+class ProfileFacade:
+    """
+    Facade pattern — wraps PlayerProfile and exposes only what
+    mini-adventures are allowed to see/do. Adventures can READ
+    profile data but cannot call save() or touch raw fields directly.
+    Profile writes happen through the framework after the adventure ends.
+    """
+
+    def __init__(self, profile: PlayerProfile):
+        self._profile = profile          
+        self._pending_result = None 
+
+    def get_name(self) -> str:
+        return self._profile.character_name
+    
+    def get_realm(self) -> str:
+        return self._profile.preferred_realm
+    
+    def get_inventory(self) -> list:
+        return list(self._profile.inventory_snapshot)
+    
+    def get_quest_history(self) -> list:
+        return list(self._profile.quest_history)
+    
+    def get_achievements(self) -> list:
+        return list(self._profile.achievements)
+    
+    def update_history(self, adventure_name: str, result: str) -> None:
+        """
+        Queue a quest result (WIN / LOSS / DRAW).
+        The framework calls _flush() after the adventure ends — 
+        adventures themselves never trigger a file save.
+        """
+        self._pending_result = {"adventure": adventure_name, "result": result}
+
+    def _flush(self) -> None:
+        """Apply the queued result to the real profile. Called by GMAECore only."""
+        if self._pending_result:
+            self._profile.quest_history.append(self._pending_result)
+            self._pending_result = None
+
+    def _save(self, filename: str) -> None:
+        """Persist the profile to disk. Called by GMAECore only."""
+        self._flush()
+        self._profile.save(filename)
+
+    def __repr__(self) -> str:
+        return f"ProfileFacade(player={self.get_name()!r})"

@@ -2,7 +2,12 @@
   "character_name": "khoa",
   "preferred_realm": "Stonepeak",
   "inventory_snapshot": [],
-  "quest_history": [],
+  "quest_history": [
+    {
+      "adventure": "Escort Across the Realm",
+      "result": "WIN"
+    }
+  ],
   "achievements": [
     "First Login",
     "First Login"
