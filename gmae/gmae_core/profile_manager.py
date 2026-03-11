@@ -27,11 +27,8 @@ class PlayerProfile:
 
     @classmethod
     def load(cls, filename: str) -> "PlayerProfile":
-        """Load profile from profiles/<filename>.json.
-        Creates a brand-new profile if the file doesn't exist yet."""
         path = os.path.join(PROFILES_DIR, f"{filename}.json")
         if not os.path.exists(path):
-            # First time this player logs in — create a fresh profile
             return cls(character_name=filename)
 
         with open(path, "r") as f:
@@ -55,13 +52,6 @@ class PlayerProfile:
         )
     
 class ProfileFacade:
-    """
-    Facade pattern — wraps PlayerProfile and exposes only what
-    mini-adventures are allowed to see/do. Adventures can READ
-    profile data but cannot call save() or touch raw fields directly.
-    Profile writes happen through the framework after the adventure ends.
-    """
-
     def __init__(self, profile: PlayerProfile):
         self._profile = profile          
         self._pending_result = None 
@@ -82,21 +72,14 @@ class ProfileFacade:
         return list(self._profile.achievements)
     
     def update_history(self, adventure_name: str, result: str) -> None:
-        """
-        Queue a quest result (WIN / LOSS / DRAW).
-        The framework calls _flush() after the adventure ends — 
-        adventures themselves never trigger a file save.
-        """
         self._pending_result = {"adventure": adventure_name, "result": result}
 
     def _flush(self) -> None:
-        """Apply the queued result to the real profile. Called by GMAECore only."""
         if self._pending_result:
             self._profile.quest_history.append(self._pending_result)
             self._pending_result = None
 
     def _save(self, filename: str) -> None:
-        """Persist the profile to disk. Called by GMAECore only."""
         self._flush()
         self._profile.save(filename)
 

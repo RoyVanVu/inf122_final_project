@@ -1,0 +1,1 @@
+from .gmae_interface import MiniAdventure
