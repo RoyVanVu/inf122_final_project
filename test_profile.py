@@ -1,5 +1,6 @@
 from gmae.gmae_core import PlayerProfile, ProfileFacade
 from gmae import MiniAdventure
+from gmae.gmae_core import AdventureRegistry
 
 # # Create and save
 # p = PlayerProfile.load("khoa")       # new profile, file doesn't exist yet
@@ -58,3 +59,33 @@ dummy = DummyAdventure()
 print(dummy.get_description())    # A dummy adventure for testing.
 print(dummy.check_completion())   # ONGOING
 print(dummy.accept_input(1, "move north"))  # ok
+
+
+# ── Phase 5 test (add at bottom of test_profile.py) ──────────────
+registry = AdventureRegistry()
+
+# Register the DummyAdventure we made in Phase 4 test
+registry.register("Dummy Adventure", DummyAdventure)
+
+# list_adventures() should show it in the menu
+print(registry.list_adventures())       # ['Dummy Adventure']
+
+# get_adventure() should return a fresh instance each time
+a1 = registry.get_adventure("Dummy Adventure")
+a2 = registry.get_adventure("Dummy Adventure")
+print(type(a1).__name__)                # DummyAdventure
+print(a1 is a2)                         # False — different instances
+
+# Registering a non-MiniAdventure class should raise TypeError
+try:
+    registry.register("Bad", str)
+    print("ERROR: should not reach here")
+except TypeError as e:
+    print(f"Good — caught bad registration: {e}")
+
+# Getting an unregistered name should raise KeyError
+try:
+    registry.get_adventure("Nonexistent")
+    print("ERROR: should not reach here")
+except KeyError as e:
+    print(f"Good — caught missing adventure: {e}")
