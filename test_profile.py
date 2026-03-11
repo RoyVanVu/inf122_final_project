@@ -1,6 +1,7 @@
 from gmae.gmae_core import PlayerProfile, ProfileFacade
 from gmae import MiniAdventure
 from gmae.gmae_core import AdventureRegistry
+from gmae.gmae_core import InputProxy
 
 # # Create and save
 # p = PlayerProfile.load("khoa")       # new profile, file doesn't exist yet
@@ -89,3 +90,27 @@ try:
     print("ERROR: should not reach here")
 except KeyError as e:
     print(f"Good — caught missing adventure: {e}")
+
+
+# ── Phase 6 test (add at bottom of test_profile.py) ──────────────
+proxy = InputProxy(dummy)   # reuse the DummyAdventure instance from Phase 4 test
+
+# Valid input — should pass through to adventure
+result = proxy.forward(1, "move north")
+print(result)               # ok  (DummyAdventure.accept_input returns "ok")
+
+# Invalid player_id — should be blocked
+result = proxy.forward(3, "move north")
+print(result)               # [BLOCKED] Invalid player ID '3'. Must be 1 or 2.
+
+# Empty action — should be blocked
+result = proxy.forward(1, "   ")
+print(result)               # [BLOCKED] Action cannot be empty.
+
+# Unknown action — should be blocked
+result = proxy.forward(2, "fly away")
+print(result)               # [BLOCKED] Unknown action 'fly away'. Valid actions: ...
+
+# validate() directly — check return values
+print(proxy.validate(1, "wait"))        # (True, '')
+print(proxy.validate(2, ""))            # (False, 'Action cannot be empty...')
