@@ -1,0 +1,172 @@
+# GuildQuest Mini-Adventure Environment (GMAE)
+
+A two-player terminal game built in Python where players can pick from a menu of mini-adventures set in the GuildQuest world. Both players sit at the same computer and take turns typing their actions.
+
+---
+
+## What's in the game
+
+Right now there are two adventures to pick from:
+
+- **Escort Across the Realm** — Co-op. Both players work together to guide an NPC safely to the destination before hazards destroy it or time runs out.
+- **Relic Hunt** — Competitive. Both players race across the map to collect the most relics before turns run out. Whoever grabs more wins.
+
+---
+
+## Requirements
+
+You need Python 3.10 or newer. To check your version, open a terminal and run:
+
+```
+python --version
+```
+
+If it says 3.10 or higher you are good to go. No extra libraries are needed to play the game. If you want to run the tests, you will also need `pytest`:
+
+```
+pip install pytest
+```
+
+---
+
+## How to run the game
+
+**Step 1** — Clone or download this repo to your computer.
+
+**Step 2** — Open a terminal and navigate into the project folder:
+
+```
+cd inf122_final_project/inf122_final_project
+```
+
+**Step 3** — Run the game:
+
+```
+python main.py
+```
+
+That's it. The game will start in your terminal.
+
+---
+
+## How to play
+
+When you start the game, each player will be asked to enter a character name. If you have played before, your profile will load automatically and show your past quest history. If it is your first time, a new profile is created for you.
+
+After both players enter their names, a menu shows the available adventures. Both players agree on one and type the number to select it.
+
+Once the adventure starts, **Player 1 goes first, then Player 2, and it keeps alternating** until the game ends.
+
+On your turn, type one of these actions and press Enter:
+
+| Action | What it does |
+|---|---|
+| `move north` | Move your character up |
+| `move south` | Move your character down |
+| `move east` | Move your character right |
+| `move west` | Move your character left |
+| `use item` | Use a consumable item in your inventory |
+| `pick up` | Pick up something at your current tile |
+| `wait` | Skip your turn |
+| `quit` | Abandon the adventure (counts as a loss) |
+
+The map is shown before each turn so you always know where everyone is. After the game ends, both player profiles are saved automatically and you can choose to play again or exit.
+
+---
+
+## Project structure
+
+Here is a quick overview of what each folder does in case you want to poke around:
+
+```
+inf122_final_project/
+├── main.py                  — entry point, run this to start the game
+├── gmae/
+│   ├── gmae_interface.py    — the abstract base class all adventures must follow
+│   ├── gmae_core/
+│   │   ├── main.py          — core game loop and menu system
+│   │   ├── profile_manager.py — player profile save/load
+│   │   ├── adventure_registry.py — tracks which adventures are available
+│   │   └── input_proxy.py   — validates player input before it reaches the game
+│   ├── adventures/
+│   │   ├── escort_across_realm/ — Escort adventure code
+│   │   └── relic_hunt/          — Relic Hunt adventure code
+│   ├── shared/
+│   │   ├── realm_adapter.py     — grid map system (built on Van's code)
+│   │   └── inventory_adapter.py — item/inventory system (built on Chi-Wei's code)
+│   └── profiles/            — player profile JSON files are saved here
+└── tests/
+    └── test_gmae.py         — unit tests
+```
+
+---
+
+## How to run the tests
+
+From the project root, run:
+
+```
+python -m pytest tests/test_gmae.py -v
+```
+
+You should see all tests pass. The `-v` flag shows each test name so you can see exactly what was checked.
+
+---
+
+## How to add a new adventure
+
+If you want to build your own mini-adventure and plug it into the game, here are the steps:
+
+**Step 1** — Create a new folder inside `gmae/adventures/` with your adventure name, for example:
+
+```
+gmae/adventures/my_new_adventure/
+    __init__.py
+```
+
+**Step 2** — Inside `__init__.py`, import `MiniAdventure` and create a class that extends it:
+
+```python
+from gmae.gmae_interface import MiniAdventure
+
+class MyNewAdventure(MiniAdventure):
+    def initialize(self, p1, p2):        ...
+    def accept_input(self, player_id, action): return "some message"
+    def advance_turn(self):              ...
+    def get_state(self):                 return {}
+    def check_completion(self):          return "ONGOING"
+    def reset(self):                     ...
+    def get_description(self):           return "Short description shown in the menu."
+```
+
+You must implement all 7 methods or Python will not let the class run.
+
+**Step 3** — Add a `register` function at the bottom of the same file:
+
+```python
+def register(registry) -> None:
+    registry.register("My New Adventure", MyNewAdventure)
+```
+
+**Step 4** — Open `gmae/gmae_core/main.py` and add your adventure to `_load_adventures()`:
+
+```python
+def _load_adventures(self) -> None:
+    # existing adventures ...
+
+    try:
+        from gmae.adventures.my_new_adventure import MyNewAdventure
+        self.registry.register("My New Adventure", MyNewAdventure)
+    except Exception as e:
+        print(f"[WARNING] My adventure failed: {type(e).__name__}: {e}")
+```
+
+**Step 5** — Run the game and your adventure will appear in the menu automatically.
+
+---
+
+## Notes
+
+- Player profiles are saved as JSON files in `gmae/profiles/`. You can delete a profile file to reset that player's history.
+- The map uses simple symbols: `.` for open ground, `~` for hazards (water), `^` for relics or destination (mountain), and letters for players and NPCs.
+- Both players use the same keyboard on the same machine — just hand off the keyboard when it is the other person's turn.
