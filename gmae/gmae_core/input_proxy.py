@@ -2,7 +2,7 @@ from gmae.gmae_interface import MiniAdventure
 
 VALID_ACTIONS = {
     "move north", "move south", "move east", "move west",
-    "pick up", "use item", "wait", "quit"
+    "use item", "wait", "quit"
 }
 
 

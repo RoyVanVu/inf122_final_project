@@ -136,9 +136,9 @@ class RelicHunt(MiniAdventure):
         s1 = self._scores[1]
         s2 = self._scores[2]
         if s1 > s2:
-            return "WIN"     
+            return "WIN_P1"
         elif s2 > s1:
-            return "LOSS"   
+            return "WIN_P2"
         return "DRAW"
 
     def reset(self) -> None:
@@ -151,5 +151,3 @@ class RelicHunt(MiniAdventure):
             "before turns run out. Most relics wins!"
         )
 
-def register(registry) -> None:
-    registry.register("Relic Hunt", RelicHunt)

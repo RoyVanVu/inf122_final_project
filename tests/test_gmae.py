@@ -162,10 +162,14 @@ class TestInputProxy:
         assert is_valid is False
         assert msg != ""
 
+    def test_pick_up_is_blocked(self):
+        result = self.proxy.forward(1, "pick up")
+        assert result.startswith("[BLOCKED]")
+
     def test_all_valid_actions_pass(self):
         valid_actions = [
             "move north", "move south", "move east", "move west",
-            "pick up", "use item", "wait", "quit"
+            "use item", "wait", "quit"
         ]
         for action in valid_actions:
             is_valid, _ = self.proxy.validate(1, action)

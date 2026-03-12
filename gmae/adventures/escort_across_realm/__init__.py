@@ -168,5 +168,3 @@ class EscortAcrossRealm(MiniAdventure):
             "before hazards destroy it."
         )
 
-def register(registry) -> None:
-    registry.register("Escort Across the Realm", EscortAcrossRealm)

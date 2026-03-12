@@ -130,6 +130,10 @@ class GMAECore:
         print("\n" + "=" * 50)
         if result == "WIN":
             print("  *** VICTORY! Well played, adventurers! ***")
+        elif result == "WIN_P1":
+            print(f"  *** {p1.get_name()} WINS! Congratulations! ***")
+        elif result == "WIN_P2":
+            print(f"  *** {p2.get_name()} WINS! Congratulations! ***")
         elif result == "LOSS":
             print("  *** DEFEAT. Better luck next time. ***")
         elif result == "DRAW":
@@ -160,7 +164,7 @@ class GMAECore:
             print(f"\nStarting: {adventure_name}...")
             print("Type 'quit' at any time to abandon the adventure.")
             print("Valid actions: move north, move south, move east, "
-                  "move west, pick up, use item, wait")
+                  "move west, use item, wait")
 
             proxy = InputProxy(adventure)
 
@@ -168,8 +172,10 @@ class GMAECore:
 
             self._show_result(result, p1, p2)
 
-            p1.update_history(adventure_name, result)
-            p2.update_history(adventure_name, result)
+            p1_result = "WIN" if result == "WIN_P1" else ("LOSS" if result == "WIN_P2" else result)
+            p2_result = "WIN" if result == "WIN_P2" else ("LOSS" if result == "WIN_P1" else result)
+            p1.update_history(adventure_name, p1_result)
+            p2.update_history(adventure_name, p2_result)
 
             p1._save(p1.get_name())
             p2._save(p2.get_name())
