@@ -1,0 +1,16 @@
+{
+  "character_name": "jordan",
+  "preferred_realm": "Verdania",
+  "inventory_snapshot": [],
+  "quest_history": [
+    {
+      "adventure": "RelicHunt",
+      "result": "WIN"
+    },
+    {
+      "adventure": "EscortAcrossRealm",
+      "result": "LOSS"
+    }
+  ],
+  "achievements": []
+}

@@ -6,6 +6,14 @@
     {
       "adventure": "Escort Across the Realm",
       "result": "WIN"
+    },
+    {
+      "adventure": "RelicHunt",
+      "result": "WIN"
+    },
+    {
+      "adventure": "EscortAcrossRealm",
+      "result": "LOSS"
     }
   ],
   "achievements": [
