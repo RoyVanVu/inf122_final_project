@@ -65,7 +65,8 @@ class RelicHunt(MiniAdventure):
 
         self._messages.append(
             f"Relic Hunt begins! {self._relics_remaining} relics hidden. "
-            "Move onto a relic tile to collect it automatically."
+            "Move onto a relic tile to collect it automatically.\n"
+            "  Map legend: P=Player  ^=Relic  .=Empty"
         )
 
     def accept_input(self, player_id: int, action: str) -> str:

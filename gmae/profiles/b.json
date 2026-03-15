@@ -1,12 +1,8 @@
 {
-  "character_name": "j",
+  "character_name": "b",
   "preferred_realm": "Verdania",
   "inventory_snapshot": [],
   "quest_history": [
-    {
-      "adventure": "EscortAcrossRealm",
-      "result": "LOSS"
-    },
     {
       "adventure": "RelicHunt",
       "result": "LOSS"
