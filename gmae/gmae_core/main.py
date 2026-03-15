@@ -14,17 +14,20 @@ class GMAECore:
         self._load_adventures()
 
     def _load_adventures(self) -> None:
-        try:
-            from gmae.adventures.escort_across_realm import EscortAcrossRealm
-            self.registry.register("Escort Across the Realm", EscortAcrossRealm)
-        except Exception as e:
-            print(f"[WARNING] Escort failed: {type(e).__name__}: {e}")
+        import pkgutil, importlib
+        import gmae.adventures as adv_pkg
+        from gmae.gmae_interface import MiniAdventure
 
-        try:
-            from gmae.adventures.relic_hunt import RelicHunt
-            self.registry.register("Relic Hunt", RelicHunt)
-        except Exception as e:
-            print(f"[WARNING] Relic Hunt failed: {type(e).__name__}: {e}")
+        for finder, name, _ in pkgutil.iter_modules(adv_pkg.__path__):
+            try:
+                mod = importlib.import_module(f"gmae.adventures.{name}")
+                for attr in vars(mod).values():
+                    if (isinstance(attr, type)
+                            and issubclass(attr, MiniAdventure)
+                            and attr is not MiniAdventure):
+                        self.registry.register(attr.__name__, attr)
+            except Exception as e:
+                print(f"[WARNING] Failed to load adventure '{name}': {e}")
 
     def _load_player(self, player_number: int) -> ProfileFacade:
         print(f"\n--- Player {player_number} ---")

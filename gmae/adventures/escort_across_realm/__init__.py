@@ -69,7 +69,11 @@ class EscortAcrossRealm(MiniAdventure):
         self._p1_inv.add_item(Item("potion_p1", "Health Potion", "Common"))
         self._p2_inv.add_item(Item("potion_p2", "Health Potion", "Common"))
 
-        self._messages.append("Escort begins! Guide the NPC to the mountain (bottom-right).")
+        self._messages.append(
+            "Escort begins! Guide the NPC to the mountain (bottom-right).\n"
+            "  TIP: Move onto the NPC's tile to push (nudge) it in that direction.\n"
+            "  Map legend: P=Player  N=NPC  ^=Destination  ~=Hazard  .=Empty"
+        )
 
     def accept_input(self, player_id: int, action: str) -> str:
         entity = f"player{player_id}"
@@ -167,4 +171,3 @@ class EscortAcrossRealm(MiniAdventure):
             "Co-op: Escort the NPC safely to the mountain "
             "before hazards destroy it."
         )
-

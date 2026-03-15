@@ -1,14 +1,16 @@
 from gmae.gmae_interface import MiniAdventure
 
-VALID_ACTIONS = {
-    "move north", "move south", "move east", "move west",
-    "use item", "wait", "quit"
-}
-
 
 class InputProxy:
+    BASE_VALID_ACTIONS = {
+        "move north", "move south", "move east", "move west",
+        "use item", "wait", "quit"
+    }
+
     def __init__(self, adventure: MiniAdventure):
         self._adventure = adventure
+        extra = getattr(adventure, "VALID_ACTIONS", set())
+        self._valid_actions = self.BASE_VALID_ACTIONS | set(extra)
 
     def validate(self, player_id: int, action: str) -> tuple[bool, str]:
         if player_id not in (1, 2):
@@ -19,8 +21,8 @@ class InputProxy:
 
         normalized = action.strip().lower()
 
-        if normalized not in VALID_ACTIONS:
-            valid_list = ", ".join(sorted(VALID_ACTIONS))
+        if normalized not in self._valid_actions:
+            valid_list = ", ".join(sorted(self._valid_actions))
             return False, f"Unknown action '{action}'. Valid actions: {valid_list}"
 
         return True, ""

@@ -1,0 +1,12 @@
+{
+  "character_name": "j",
+  "preferred_realm": "Verdania",
+  "inventory_snapshot": [],
+  "quest_history": [
+    {
+      "adventure": "EscortAcrossRealm",
+      "result": "LOSS"
+    }
+  ],
+  "achievements": []
+}
