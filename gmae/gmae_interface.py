@@ -20,7 +20,7 @@ class MiniAdventure(ABC):
 
     @abstractmethod
     def check_completion(self) -> str:
-        """Return one of: 'ONGOING', 'WIN', 'LOSS', 'DRAW'"""
+        """Return one of: 'ONGOING', 'WIN', 'WIN_P1', 'WIN_P2' , 'LOSS', 'DRAW'"""
         ...
 
     @abstractmethod
