@@ -291,44 +291,63 @@ class GMAEGUIQt(QMainWindow):
     # Compass + Instructions widget builder
     # ------------------------------------------------------------------
     def _build_compass_widget(self):
-        """Return a styled QLabel showing a visual compass rose."""
-        compass_text = (
-            "           N\n"
-            "           ▲\n"
-            "    W ◄ ─ ● ─ ► E\n"
-            "           ▼\n"
-            "           S"
+        """Return a styled QLabel showing a symmetrical compass rose via HTML."""
+        html = (
+            "<table cellspacing='0' cellpadding='0' "
+            "style='color:#56d8ff; font-family:Consolas,Courier; font-size:15px; font-weight:bold;'>"
+            "<tr><td></td><td align='center'>N</td><td></td></tr>"
+            "<tr><td></td><td align='center'>▲</td><td></td></tr>"
+            "<tr>"
+            "  <td align='right'>W ◄&nbsp;</td>"
+            "  <td align='center'>──●──</td>"
+            "  <td align='left'>&nbsp;► E</td>"
+            "</tr>"
+            "<tr><td></td><td align='center'>▼</td><td></td></tr>"
+            "<tr><td></td><td align='center'>S</td><td></td></tr>"
+            "</table>"
         )
-        lbl = QLabel(compass_text)
-        lbl.setFont(QFont("Courier", 13, QFont.Bold))
+        lbl = QLabel(html)
+        lbl.setTextFormat(Qt.RichText)
         lbl.setAlignment(Qt.AlignCenter)
         lbl.setStyleSheet(
             "background-color: #16213e; border: 1px solid #0f3460;"
-            "border-radius: 6px; padding: 10px; color: #56d8ff;"
+            "border-radius: 6px; padding: 14px; color: #56d8ff;"
         )
+        lbl.setMinimumHeight(120)
         return lbl
 
     def _build_instructions_widget(self):
         """Return a styled QLabel with commands and map legend."""
         instructions = (
-            "<b style='color:#e94560;'>⌨ Commands</b><br>"
-            "<span style='color:#b8b8d0;'>"
-            "move north &nbsp;│&nbsp; move south<br>"
-            "move east &nbsp;&nbsp;│&nbsp; move west<br>"
-            "use item &nbsp;&nbsp;&nbsp;│&nbsp; wait<br>"
-            "quit"
-            "</span>"
-            "<br><br>"
-            "<b style='color:#e94560;'>🗺 Map Legend</b><br>"
-            "<span style='color:#b8b8d0;'>"
-            "<span style='color:#4488ff;'>■</span> Player 1 &nbsp;&nbsp;"
-            "<span style='color:#ff4444;'>■</span> Player 2<br>"
-            "<span style='color:#ffcc00;'>■</span> NPC &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-            "<span style='color:#3a7d44;'>■</span> Grass<br>"
-            "<span style='color:#555555;'>■</span> Wall &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-            "<span style='color:#ff6600;'>■</span> Hazard<br>"
-            "<span style='color:#ffdd00;'>■</span> Relic / Goal"
-            "</span>"
+            "<b style='color:#e94560; font-size:13px;'>⌨ Commands</b><br>"
+            "<table style='color:#c8c8e0; font-size:12px; margin-top:4px;'>"
+            "<tr><td>move north</td><td>&nbsp;│&nbsp;</td><td>move south</td></tr>"
+            "<tr><td>move east</td><td>&nbsp;│&nbsp;</td><td>move west</td></tr>"
+            "<tr><td>use item</td><td>&nbsp;│&nbsp;</td><td>wait</td></tr>"
+            "<tr><td>quit</td><td></td><td></td></tr>"
+            "</table>"
+            "<br>"
+            "<b style='color:#e94560; font-size:13px;'>🗺 Map Legend</b>"
+            "<table style='color:#c8c8e0; font-size:12px; margin-top:4px;'>"
+            "<tr>"
+            "  <td><span style='color:#4488ff;'>■</span> Player 1</td>"
+            "  <td width='16'></td>"
+            "  <td><span style='color:#ff4444;'>■</span> Player 2</td>"
+            "</tr>"
+            "<tr>"
+            "  <td><span style='color:#ffcc00;'>■</span> NPC</td>"
+            "  <td></td>"
+            "  <td><span style='color:#3a7d44;'>■</span> Grass</td>"
+            "</tr>"
+            "<tr>"
+            "  <td><span style='color:#555;'>■</span> Wall</td>"
+            "  <td></td>"
+            "  <td><span style='color:#ff6600;'>■</span> Hazard</td>"
+            "</tr>"
+            "<tr>"
+            "  <td colspan='3'><span style='color:#ffdd00;'>■</span> Relic / Goal</td>"
+            "</tr>"
+            "</table>"
         )
         lbl = QLabel(instructions)
         lbl.setFont(QFont("Segoe UI", 11))
@@ -518,8 +537,9 @@ class GMAEGUIQt(QMainWindow):
     def _update_stats_and_turn(self):
         state = self.current_adventure.get_state()
         lines = []
+        skip_keys = {"map", "map_legend", "map legend"}
         for k, v in state.items():
-            if k != "map":
+            if k.lower() not in skip_keys:
                 label = k.replace("_", " ").title()
                 lines.append(f"{label}: {v}")
         self.stats_label.setText("\n".join(lines))
