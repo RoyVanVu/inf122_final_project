@@ -1,0 +1,12 @@
+{
+  "character_name": "Test1",
+  "preferred_realm": "Verdania",
+  "inventory_snapshot": [],
+  "quest_history": [
+    {
+      "adventure": "RelicHunt",
+      "result": "LOSS"
+    }
+  ],
+  "achievements": []
+}
