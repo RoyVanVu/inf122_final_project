@@ -287,18 +287,81 @@ class GMAEGUIQt(QMainWindow):
     # ==================================================================
     # Screen 3: Main Game
     # ==================================================================
+    # ------------------------------------------------------------------
+    # Compass + Instructions widget builder
+    # ------------------------------------------------------------------
+    def _build_compass_widget(self):
+        """Return a styled QLabel showing a visual compass rose."""
+        compass_text = (
+            "           N\n"
+            "           ▲\n"
+            "    W ◄ ─ ● ─ ► E\n"
+            "           ▼\n"
+            "           S"
+        )
+        lbl = QLabel(compass_text)
+        lbl.setFont(QFont("Courier", 13, QFont.Bold))
+        lbl.setAlignment(Qt.AlignCenter)
+        lbl.setStyleSheet(
+            "background-color: #16213e; border: 1px solid #0f3460;"
+            "border-radius: 6px; padding: 10px; color: #56d8ff;"
+        )
+        return lbl
+
+    def _build_instructions_widget(self):
+        """Return a styled QLabel with commands and map legend."""
+        instructions = (
+            "<b style='color:#e94560;'>⌨ Commands</b><br>"
+            "<span style='color:#b8b8d0;'>"
+            "move north &nbsp;│&nbsp; move south<br>"
+            "move east &nbsp;&nbsp;│&nbsp; move west<br>"
+            "use item &nbsp;&nbsp;&nbsp;│&nbsp; wait<br>"
+            "quit"
+            "</span>"
+            "<br><br>"
+            "<b style='color:#e94560;'>🗺 Map Legend</b><br>"
+            "<span style='color:#b8b8d0;'>"
+            "<span style='color:#4488ff;'>■</span> Player 1 &nbsp;&nbsp;"
+            "<span style='color:#ff4444;'>■</span> Player 2<br>"
+            "<span style='color:#ffcc00;'>■</span> NPC &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+            "<span style='color:#3a7d44;'>■</span> Grass<br>"
+            "<span style='color:#555555;'>■</span> Wall &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+            "<span style='color:#ff6600;'>■</span> Hazard<br>"
+            "<span style='color:#ffdd00;'>■</span> Relic / Goal"
+            "</span>"
+        )
+        lbl = QLabel(instructions)
+        lbl.setFont(QFont("Segoe UI", 11))
+        lbl.setWordWrap(True)
+        lbl.setTextFormat(Qt.RichText)
+        lbl.setStyleSheet(
+            "background-color: #16213e; border: 1px solid #0f3460;"
+            "border-radius: 6px; padding: 10px; color: #d4d4d4;"
+        )
+        return lbl
+
+    # ==================================================================
+    # Screen 3: Main Game
+    # ==================================================================
     def _build_main_game_screen(self):
         self._clear_layout()
 
         game_h = QHBoxLayout()
 
-        # ── Left: map view ──
+        # ── Left: map view + compass + instructions ──
         left_v = QVBoxLayout()
         self.scene = QGraphicsScene(self)
         self.view = QGraphicsView(self.scene)
         self.view.setRenderHint(QPainter.Antialiasing)
         self.view.setMinimumSize(420, 420)
         left_v.addWidget(self.view, stretch=1)
+
+        # Compass and instructions side-by-side below the map
+        bottom_h = QHBoxLayout()
+        bottom_h.addWidget(self._build_compass_widget())
+        bottom_h.addWidget(self._build_instructions_widget())
+        left_v.addLayout(bottom_h)
+
         game_h.addLayout(left_v, stretch=2)
 
         # ── Right: stats + log + input ──
@@ -341,7 +404,6 @@ class GMAEGUIQt(QMainWindow):
         self._full_map_render()
         self._update_stats_and_turn()
         self._append_log("Adventure started! Type your actions below.")
-        self._append_log("Valid: move north/south/east/west, use item, wait, quit")
         self.entry_action.setFocus()
 
     # ==================================================================
