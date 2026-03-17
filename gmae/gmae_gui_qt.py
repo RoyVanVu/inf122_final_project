@@ -293,18 +293,20 @@ class GMAEGUIQt(QMainWindow):
     def _build_compass_widget(self):
         """Return a styled QLabel showing a symmetrical compass rose via HTML."""
         html = (
-            "<table cellspacing='0' cellpadding='0' "
-            "style='color:#56d8ff; font-family:Consolas,Courier; font-size:15px; font-weight:bold;'>"
-            "<tr><td></td><td align='center'>N</td><td></td></tr>"
+            "<div align='center'>"
+            "<table cellspacing='0' cellpadding='2' "
+            "style='color:#56d8ff; font-family:Consolas,Courier; font-size:16px; font-weight:bold;'>"
+            "<tr><td width='50'></td><td align='center' width='60'>N</td><td width='50'></td></tr>"
             "<tr><td></td><td align='center'>▲</td><td></td></tr>"
             "<tr>"
-            "  <td align='right'>W ◄&nbsp;</td>"
-            "  <td align='center'>──●──</td>"
-            "  <td align='left'>&nbsp;► E</td>"
+            "  <td align='right'>W ◄</td>"
+            "  <td align='center'>─●─</td>"
+            "  <td align='left'>► E</td>"
             "</tr>"
             "<tr><td></td><td align='center'>▼</td><td></td></tr>"
             "<tr><td></td><td align='center'>S</td><td></td></tr>"
             "</table>"
+            "</div>"
         )
         lbl = QLabel(html)
         lbl.setTextFormat(Qt.RichText)
@@ -313,7 +315,7 @@ class GMAEGUIQt(QMainWindow):
             "background-color: #16213e; border: 1px solid #0f3460;"
             "border-radius: 6px; padding: 14px; color: #56d8ff;"
         )
-        lbl.setMinimumHeight(120)
+        lbl.setMinimumHeight(130)
         return lbl
 
     def _build_instructions_widget(self):
@@ -540,12 +542,24 @@ class GMAEGUIQt(QMainWindow):
         skip_keys = {"map", "map_legend", "map legend"}
         for k, v in state.items():
             if k.lower() not in skip_keys:
+                # Strip embedded "Map legend: ..." text from values
+                val_str = str(v)
+                val_str = re.sub(r'\s*Map legend:.*$', '', val_str, flags=re.IGNORECASE).strip()
+                if not val_str:
+                    continue
                 label = k.replace("_", " ").title()
-                lines.append(f"{label}: {v}")
+                lines.append(f"{label}: {val_str}")
         self.stats_label.setText("\n".join(lines))
 
-        name = self.p1_facade.get_name() if self.current_player_id == 1 else self.p2_facade.get_name()
+        # Color-coded turn label: blue for P1, red for P2
+        if self.current_player_id == 1:
+            name = self.p1_facade.get_name()
+            color = "#4488ff"
+        else:
+            name = self.p2_facade.get_name()
+            color = "#ff4444"
         self.lbl_turn.setText(f"➤  {name}'s Turn  (Player {self.current_player_id})")
+        self.lbl_turn.setStyleSheet(f"color: {color}; padding: 4px; font-size: 16px;")
 
     # ==================================================================
     # Log
