@@ -141,14 +141,24 @@ class EscortAcrossRealm(MiniAdventure):
         new_hazards = []
         for hx, hy in self._hazards:
             new_hy = hy + 1
-            if new_hy < self.MAP_HEIGHT:
+
+            # Restore old tile — mountain if destination, else plains
+            if (hx, hy) == self._destination:
+                self._map.set_terrain(hx, hy, "mountain")
+            else:
                 self._map.set_terrain(hx, hy, "plains")
-                self._map.set_terrain(hx, new_hy, "water")
+
+            if new_hy < self.MAP_HEIGHT:
+                # Don't overwrite the destination mountain with water
+                if (hx, new_hy) != self._destination:
+                    self._map.set_terrain(hx, new_hy, "water")
                 new_hazards.append((hx, new_hy))
             else:
                 # Hazard fell off bottom — spawn a new one at the top
-                self._map.set_terrain(hx, hy, "plains")
                 new_x = random.randint(0, self.MAP_WIDTH - 1)
+                # Avoid spawning on the destination
+                while (new_x, 0) == self._destination:
+                    new_x = random.randint(0, self.MAP_WIDTH - 1)
                 self._map.set_terrain(new_x, 0, "water")
                 new_hazards.append((new_x, 0))
         self._hazards = new_hazards
