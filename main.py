@@ -4,13 +4,13 @@ from gmae.gmae_core.main import main as cli_main
 def main():
     print("Welcome to GuildQuest Mini-Adventure Environment")
     print("=" * 50)
-    print("  Before selecting GUI Mode, ensure PyQt5 is installed:")
+    print("  Before selecting GUI Mode, Please ensure PyQt5 is installed:")
     print("    pip install PyQt5")
     print("  CLI Mode requires no additional installs.")
     print("=" * 50)
     print("\nPlease select mode:")
     print("1. CLI Mode  (Turn-based, text input)")
-    print("2. GUI Mode  (Real-time, keyboard controls, requires PyQt5)")
+    print("2. GUI Mode  (Real-time, keyboard controls)")
     
     while True:
         try:

@@ -313,13 +313,14 @@ class GMAEGUIQt(QMainWindow):
         self._build_main_game_screen()
 
     # ==================================================================
-    # Screen 3: Main Game  (real-time, keyboard-driven)
+    # Screen 3: Main Game
     # ==================================================================
 
     # ------------------------------------------------------------------
     # Compass + Controls widget builders
     # ------------------------------------------------------------------
     def _build_controls_widget(self):
+        """ WoW its html how rare in python"""
         """Return a styled QLabel showing key bindings for both players."""
         html = (
             "<div align='center'>"
@@ -516,6 +517,9 @@ class GMAEGUIQt(QMainWindow):
             if key in self.player_nodes:
                 self.player_nodes[key].shake()
         else:
+            # Advance the turn (moves hazards, ticks clock, etc.)
+            self.current_adventure.advance_turn()
+
             # Re-render successful action
             self._full_map_render()
             self._update_stats()
@@ -530,15 +534,14 @@ class GMAEGUIQt(QMainWindow):
     # Game timer tick  (~100ms)
     # ==================================================================
     def _game_tick(self):
-        """Called QTimer every TICK_INTERVAL_MS."""
+        """Called QTimer every TICK_INTERVAL_MS. Refreshes display only."""
         if not self._game_running:
             return
 
         self._tick_count += 1
 
-        # Advance the adventure turn every TURN_TICK_INTERVAL ticks
-        if self._tick_count % TURN_TICK_INTERVAL == 0:
-            self.current_adventure.advance_turn()
+        # Refresh the display periodically (every ~500ms)
+        if self._tick_count % 5 == 0:
             self._full_map_render()
             self._update_stats()
 

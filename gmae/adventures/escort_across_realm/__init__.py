@@ -87,9 +87,23 @@ class EscortAcrossRealm(MiniAdventure):
                 px, py = self._map.get_position(entity)
                 nx, ny = self._map.get_position("npc")
                 if (px, py) == (nx, ny):
-                    # Push NPC in the same direction
-                    self._map.move("npc", direction)
-                    msg += f" (NPC nudged {direction}!)"
+                    # Try to push NPC in the same direction
+                    push_ok, _, _, _ = self._map.move("npc", direction)
+                    if push_ok:
+                        msg += f" (NPC nudged {direction}!)"
+                    else:
+                        # NPC blocked (border/wall) — swap positions so
+                        #  player  approach from the other side
+                        old_px, old_py = px, py  # player's current (= NPC's) pos
+                        # Player goes back to where they came from
+                        opposite = {"north": "south", "south": "north",
+                                     "east": "west", "west": "east"}
+                        self._map.move(entity, opposite[direction])
+                        # Swap: move NPC to player's old spot, player to NPC's old spot
+                        ppx, ppy = self._map.get_position(entity)
+                        self._map.place_entity("npc", ppx, ppy)
+                        self._map.place_entity(entity, old_px, old_py)
+                        msg += f" (Swapped past NPC — push from the other side!)"
             return msg
 
         elif action == "use item":
