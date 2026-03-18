@@ -26,6 +26,14 @@
     {
       "adventure": "EscortAcrossRealm",
       "result": "LOSS"
+    },
+    {
+      "adventure": "EscortAcrossRealm",
+      "result": "LOSS"
+    },
+    {
+      "adventure": "EscortAcrossRealm",
+      "result": "LOSS"
     }
   ],
   "achievements": []

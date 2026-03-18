@@ -146,7 +146,11 @@ class EscortAcrossRealm(MiniAdventure):
                 self._map.set_terrain(hx, new_hy, "water")
                 new_hazards.append((hx, new_hy))
             else:
+                # Hazard fell off bottom — spawn a new one at the top
                 self._map.set_terrain(hx, hy, "plains")
+                new_x = random.randint(0, self.MAP_WIDTH - 1)
+                self._map.set_terrain(new_x, 0, "water")
+                new_hazards.append((new_x, 0))
         self._hazards = new_hazards
 
     def get_state(self) -> dict:
