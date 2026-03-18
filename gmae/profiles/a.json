@@ -1,12 +1,8 @@
 {
-  "character_name": "b",
+  "character_name": "a",
   "preferred_realm": "Verdania",
   "inventory_snapshot": [],
   "quest_history": [
-    {
-      "adventure": "RelicHunt",
-      "result": "LOSS"
-    },
     {
       "adventure": "RelicHunt",
       "result": "DRAW"

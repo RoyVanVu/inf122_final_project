@@ -9,8 +9,8 @@ def main():
     print("  CLI Mode requires no additional installs.")
     print("=" * 50)
     print("\nPlease select mode:")
-    print("1. CLI Mode")
-    print("2. GUI Mode")
+    print("1. CLI Mode  (Turn-based, text input)")
+    print("2. GUI Mode  (Real-time, keyboard controls, requires PyQt5)")
     
     while True:
         try:

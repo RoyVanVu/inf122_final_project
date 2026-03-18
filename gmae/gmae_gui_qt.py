@@ -8,13 +8,18 @@ from PyQt5.QtWidgets import (
     QMessageBox, QGraphicsView, QGraphicsScene, QGraphicsObject
 )
 from PyQt5.QtGui import QPixmap, QFont, QColor, QPainter
-from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPointF, QRectF
+from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPointF, QRectF, QTimer
 
 from gmae.gmae_core.profile_manager import PlayerProfile, ProfileFacade
 from gmae.gmae_core.adventure_registry import AdventureRegistry
 from gmae.gmae_core.input_proxy import InputProxy
 
 TILE_SIZE = 48
+
+# Tick interval in ms for the game loop
+TICK_INTERVAL_MS = 100
+# How many ticks between each advance_turn() call (~1 second)
+TURN_TICK_INTERVAL = 10
 
 
 class AnimatedSpriteNode(QGraphicsObject):
@@ -53,8 +58,29 @@ class AnimatedSpriteNode(QGraphicsObject):
         self.anim.start()
 
 
-class GMAEGUIQt(QMainWindow):
+# ======================================================================
+# Key binding maps
+# ======================================================================
+P1_KEY_MAP = {
+    Qt.Key_W: "move north",
+    Qt.Key_S: "move south",
+    Qt.Key_A: "move west",
+    Qt.Key_D: "move east",
+    Qt.Key_Q: "use item",
+    Qt.Key_E: "wait",
+}
 
+P2_KEY_MAP = {
+    Qt.Key_Up:    "move north",
+    Qt.Key_Down:  "move south",
+    Qt.Key_Left:  "move west",
+    Qt.Key_Right: "move east",
+    Qt.Key_Slash: "use item",
+    Qt.Key_Period: "wait",
+}
+
+
+class GMAEGUIQt(QMainWindow):
 
     def __init__(self):
         super().__init__()
@@ -92,7 +118,6 @@ class GMAEGUIQt(QMainWindow):
         self.p2_facade = None
         self.current_adventure = None
         self.proxy = None
-        self.current_player_id = 1
 
         # ── Assets ─────────────────────────────────────────────────────
         self.assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets")
@@ -102,6 +127,12 @@ class GMAEGUIQt(QMainWindow):
         # Tracked animated nodes for smooth movement
         self.player_nodes = {}     # "p1" / "p2" -> AnimatedSpriteNode
         self.previous_map_str = None
+
+        # ── Game loop state ────────────────────────────────────────────
+        self.game_timer = QTimer(self)
+        self.game_timer.timeout.connect(self._game_tick)
+        self._tick_count = 0
+        self._game_running = False
 
         # ── Central widget ─────────────────────────────────────────────
         self.central_widget = QWidget()
@@ -136,16 +167,13 @@ class GMAEGUIQt(QMainWindow):
         hazard = pix("hazard_sprite", "#ff6600")
         relic  = pix("relic_sprite",  "#ffdd00")
 
-        # Map  ACTUAL characters produced by render_map():
-        #   P = player (both), N = npc, ~ = water/hazard, ^ = mountain/destination/relic
-        #   . = plains, # = wall
         self.sprite_pixmaps = {
             ".": grass,
             " ": grass,
             "#": wall,
-            "~": hazard,   # water terrain -> hazard
-            "^": relic,    # mountain terrain -> destination/relic
-            "P": p1,       # default;  override per-player below via position
+            "~": hazard,
+            "^": relic,
+            "P": p1,
             "N": npc,
         }
         self._p1_pix = p1
@@ -192,13 +220,13 @@ class GMAEGUIQt(QMainWindow):
     def _build_setup_screen(self):
         self._clear_layout()
 
-        title = QLabel("⚔  GuildQuest Mini-Adventure  ⚔")
+        title = QLabel("\u2694  GuildQuest Mini-Adventure  \u2694")
         title.setFont(QFont("Arial", 26, QFont.Bold))
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("color: #e94560;")
         self.main_layout.addWidget(title)
 
-        subtitle = QLabel("Two players · One machine · Infinite glory")
+        subtitle = QLabel("Two players \u00b7 One machine \u00b7 Infinite glory")
         subtitle.setFont(QFont("Arial", 13))
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setStyleSheet("color: #a0a0c0;")
@@ -261,7 +289,7 @@ class GMAEGUIQt(QMainWindow):
         self.listbox.setFont(QFont("Arial", 14))
         for adv in self.adventures:
             obj = self.registry.get_adventure(adv)
-            self.listbox.addItem(f"{adv}  —  {obj.get_description()}")
+            self.listbox.addItem(f"{adv}  \u2014  {obj.get_description()}")
         self.main_layout.addWidget(self.listbox)
         self.main_layout.addSpacing(10)
 
@@ -279,32 +307,47 @@ class GMAEGUIQt(QMainWindow):
         self.current_adventure = self.registry.get_adventure(self.adventures[idx])
         self.current_adventure.initialize(self.p1_facade, self.p2_facade)
         self.proxy = InputProxy(self.current_adventure)
-        self.current_player_id = 1
         self.previous_map_str = None
         self.player_nodes.clear()
+        self._tick_count = 0
         self._build_main_game_screen()
 
     # ==================================================================
-    # Screen 3: Main Game
+    # Screen 3: Main Game  (real-time, keyboard-driven)
     # ==================================================================
+
     # ------------------------------------------------------------------
-    # Compass + Instructions widget builder
+    # Compass + Controls widget builders
     # ------------------------------------------------------------------
-    def _build_compass_widget(self):
-        """Return a styled QLabel showing a symmetrical compass rose via HTML."""
+    def _build_controls_widget(self):
+        """Return a styled QLabel showing key bindings for both players."""
         html = (
             "<div align='center'>"
             "<table cellspacing='0' cellpadding='2' "
             "style='color:#56d8ff; font-family:Consolas,Courier; font-size:16px; font-weight:bold;'>"
             "<tr><td width='50'></td><td align='center' width='60'>N</td><td width='50'></td></tr>"
-            "<tr><td></td><td align='center'>▲</td><td></td></tr>"
+            "<tr><td></td><td align='center'>\u25b2</td><td></td></tr>"
             "<tr>"
-            "  <td align='right'>W ◄</td>"
-            "  <td align='center'>─●─</td>"
-            "  <td align='left'>► E</td>"
+            "  <td align='right'>W \u25c4</td>"
+            "  <td align='center'>\u2500\u25cf\u2500</td>"
+            "  <td align='left'>\u25ba E</td>"
             "</tr>"
-            "<tr><td></td><td align='center'>▼</td><td></td></tr>"
+            "<tr><td></td><td align='center'>\u25bc</td><td></td></tr>"
             "<tr><td></td><td align='center'>S</td><td></td></tr>"
+            "</table>"
+            "<br>"
+            "<table style='font-size:12px; margin-top:2px;'>"
+            "<tr>"
+            "  <td style='color:#4488ff; font-weight:bold;'>P1 (WASD)</td>"
+            "  <td width='20'></td>"
+            "  <td style='color:#ff4444; font-weight:bold;'>P2 (Arrows)</td>"
+            "</tr>"
+            "<tr style='color:#c8c8e0;'>"
+            "  <td>Q = Item</td><td></td><td>/ = Item</td>"
+            "</tr>"
+            "<tr style='color:#c8c8e0;'>"
+            "  <td>E = Wait</td><td></td><td>. = Wait</td>"
+            "</tr>"
             "</table>"
             "</div>"
         )
@@ -315,43 +358,37 @@ class GMAEGUIQt(QMainWindow):
             "background-color: #16213e; border: 1px solid #0f3460;"
             "border-radius: 6px; padding: 14px; color: #56d8ff;"
         )
-        lbl.setMinimumHeight(130)
+        lbl.setMinimumHeight(180)
         return lbl
 
-    def _build_instructions_widget(self):
-        """Return a styled QLabel with commands and map legend."""
-        instructions = (
-            "<b style='color:#e94560; font-size:13px;'>⌨ Commands</b><br>"
-            "<table style='color:#c8c8e0; font-size:12px; margin-top:4px;'>"
-            "<tr><td>move north</td><td>&nbsp;│&nbsp;</td><td>move south</td></tr>"
-            "<tr><td>move east</td><td>&nbsp;│&nbsp;</td><td>move west</td></tr>"
-            "<tr><td>use item</td><td>&nbsp;│&nbsp;</td><td>wait</td></tr>"
-            "<tr><td>quit</td><td></td><td></td></tr>"
+    def _build_legend_widget(self):
+        """Return a styled QLabel with the map legend."""
+        html = (
+            "<b style='color:#e94560; font-size:13px;'>\U0001f5fa Map Legend</b>"
+            "<table style='color:#c8c8e0; font-size:12px; margin-top:6px;'>"
+            "<tr>"
+            "  <td><span style='color:#4488ff;'>\u25a0</span> Player 1</td>"
+            "  <td width='16'></td>"
+            "  <td><span style='color:#ff4444;'>\u25a0</span> Player 2</td>"
+            "</tr>"
+            "<tr>"
+            "  <td><span style='color:#ffcc00;'>\u25a0</span> NPC</td>"
+            "  <td></td>"
+            "  <td><span style='color:#3a7d44;'>\u25a0</span> Grass</td>"
+            "</tr>"
+            "<tr>"
+            "  <td><span style='color:#555;'>\u25a0</span> Wall</td>"
+            "  <td></td>"
+            "  <td><span style='color:#ff6600;'>\u25a0</span> Hazard</td>"
+            "</tr>"
+            "<tr>"
+            "  <td colspan='3'><span style='color:#ffdd00;'>\u25a0</span> Relic / Goal</td>"
+            "</tr>"
             "</table>"
             "<br>"
-            "<b style='color:#e94560; font-size:13px;'>🗺 Map Legend</b>"
-            "<table style='color:#c8c8e0; font-size:12px; margin-top:4px;'>"
-            "<tr>"
-            "  <td><span style='color:#4488ff;'>■</span> Player 1</td>"
-            "  <td width='16'></td>"
-            "  <td><span style='color:#ff4444;'>■</span> Player 2</td>"
-            "</tr>"
-            "<tr>"
-            "  <td><span style='color:#ffcc00;'>■</span> NPC</td>"
-            "  <td></td>"
-            "  <td><span style='color:#3a7d44;'>■</span> Grass</td>"
-            "</tr>"
-            "<tr>"
-            "  <td><span style='color:#555;'>■</span> Wall</td>"
-            "  <td></td>"
-            "  <td><span style='color:#ff6600;'>■</span> Hazard</td>"
-            "</tr>"
-            "<tr>"
-            "  <td colspan='3'><span style='color:#ffdd00;'>■</span> Relic / Goal</td>"
-            "</tr>"
-            "</table>"
+            "<span style='color:#c8c8e0; font-size:12px;'>Press <b style='color:#e94560;'>Esc</b> to quit</span>"
         )
-        lbl = QLabel(instructions)
+        lbl = QLabel(html)
         lbl.setFont(QFont("Segoe UI", 11))
         lbl.setWordWrap(True)
         lbl.setTextFormat(Qt.RichText)
@@ -361,15 +398,15 @@ class GMAEGUIQt(QMainWindow):
         )
         return lbl
 
-    # ==================================================================
-    # Screen 3: Main Game
-    # ==================================================================
+    # ------------------------------------------------------------------
+    # Build the game screen
+    # ------------------------------------------------------------------
     def _build_main_game_screen(self):
         self._clear_layout()
 
         game_h = QHBoxLayout()
 
-        # ── Left: map view + compass + instructions ──
+        # ── Left: map view + controls + legend ──
         left_v = QVBoxLayout()
         self.scene = QGraphicsScene(self)
         self.view = QGraphicsView(self.scene)
@@ -377,16 +414,27 @@ class GMAEGUIQt(QMainWindow):
         self.view.setMinimumSize(420, 420)
         left_v.addWidget(self.view, stretch=1)
 
-        # Compass and instructions side-by-side below the map
+        # Controls and legend side-by-side below the map
         bottom_h = QHBoxLayout()
-        bottom_h.addWidget(self._build_compass_widget())
-        bottom_h.addWidget(self._build_instructions_widget())
+        bottom_h.addWidget(self._build_controls_widget())
+        bottom_h.addWidget(self._build_legend_widget())
         left_v.addLayout(bottom_h)
 
         game_h.addLayout(left_v, stretch=2)
 
-        # ── Right: stats + log + input ──
+        # ── Right: player labels + stats + log ──
         right_v = QVBoxLayout()
+
+        # Player status bar (both players, color-coded)
+        self.player_bar = QLabel("")
+        self.player_bar.setFont(QFont("Arial", 14, QFont.Bold))
+        self.player_bar.setTextFormat(Qt.RichText)
+        self.player_bar.setAlignment(Qt.AlignCenter)
+        self.player_bar.setStyleSheet(
+            "background-color: #16213e; border: 1px solid #0f3460;"
+            "border-radius: 6px; padding: 8px;"
+        )
+        right_v.addWidget(self.player_bar)
 
         self.stats_label = QLabel("Stats:")
         self.stats_label.setFont(QFont("Courier", 11))
@@ -402,40 +450,114 @@ class GMAEGUIQt(QMainWindow):
         self.log_display.setReadOnly(True)
         right_v.addWidget(self.log_display, stretch=1)
 
-        self.lbl_turn = QLabel("")
-        self.lbl_turn.setFont(QFont("Arial", 15, QFont.Bold))
-        self.lbl_turn.setStyleSheet("color: #ffaa00; padding: 4px;")
-        right_v.addWidget(self.lbl_turn)
-
-        input_h = QHBoxLayout()
-        self.entry_action = QLineEdit()
-        self.entry_action.setFont(QFont("Arial", 14))
-        self.entry_action.setPlaceholderText("e.g. move north, use item, wait")
-        self.entry_action.returnPressed.connect(self._on_submit_action)
-        input_h.addWidget(self.entry_action)
-
-        btn = QPushButton("Submit")
-        btn.clicked.connect(self._on_submit_action)
-        input_h.addWidget(btn)
-        right_v.addLayout(input_h)
-
         game_h.addLayout(right_v, stretch=1)
         self.main_layout.addLayout(game_h)
 
         self._full_map_render()
-        self._update_stats_and_turn()
-        self._append_log("Adventure started! Type your actions below.")
-        self.entry_action.setFocus()
+        self._update_stats()
+        self._update_player_bar()
+        self._append_log("Adventure started! Use keyboard controls.")
+        self._append_log("P1: WASD to move, Q=item, E=wait")
+        self._append_log("P2: Arrow keys to move, /=item, .=wait")
+        self._append_log("Press Esc to quit.")
+
+        # Start the r-time game loop
+        self._game_running = True
+        self.game_timer.start(TICK_INTERVAL_MS)
+        self.setFocus()
+
+    # ==================================================================
+    # Keyboard input
+    # ==================================================================
+    def keyPressEvent(self, event):
+        if not self._game_running:
+            super().keyPressEvent(event)
+            return
+
+        key = event.key()
+
+        # Escape to quit
+        if key == Qt.Key_Escape:
+            self._stop_game()
+            self._append_log("> Adventure abandoned.")
+            self._handle_game_over("LOSS")
+            return
+
+        # Player 1 keys
+        if key in P1_KEY_MAP:
+            action = P1_KEY_MAP[key]
+            self._process_action(1, action)
+            return
+
+        # Player 2 keys
+        if key in P2_KEY_MAP:
+            action = P2_KEY_MAP[key]
+            self._process_action(2, action)
+            return
+
+        super().keyPressEvent(event)
+
+    def _process_action(self, player_id, action):
+        """Immediately send  action  given player."""
+        if not self._game_running:
+            return
+
+        old_state = self.current_adventure.get_state()
+
+        result_msg = self.proxy.forward(player_id, action)
+
+        # Only log non-trivial messages (skip wait spam)
+        tag = "P1" if player_id == 1 else "P2"
+        if action != "wait":
+            self._append_log(f"[{tag}] {action}: {result_msg}")
+
+        if result_msg.startswith("[BLOCKED]"):
+            key = "p1" if player_id == 1 else "p2"
+            if key in self.player_nodes:
+                self.player_nodes[key].shake()
+        else:
+            # Re-render successful action
+            self._full_map_render()
+            self._update_stats()
+
+            # Check completion immediately after each action
+            status = self.current_adventure.check_completion()
+            if status != "ONGOING":
+                self._stop_game()
+                self._handle_game_over(status)
+
+    # ==================================================================
+    # Game timer tick  (~100ms)
+    # ==================================================================
+    def _game_tick(self):
+        """Called QTimer every TICK_INTERVAL_MS."""
+        if not self._game_running:
+            return
+
+        self._tick_count += 1
+
+        # Advance the adventure turn every TURN_TICK_INTERVAL ticks
+        if self._tick_count % TURN_TICK_INTERVAL == 0:
+            self.current_adventure.advance_turn()
+            self._full_map_render()
+            self._update_stats()
+
+            status = self.current_adventure.check_completion()
+            if status != "ONGOING":
+                self._stop_game()
+                self._handle_game_over(status)
+
+    def _stop_game(self):
+        self._game_running = False
+        self.game_timer.stop()
 
     # ==================================================================
     # Map rendering
     # ==================================================================
     def _get_player_positions(self, state):
-      
         p1_pos = None
         p2_pos = None
 
-        # Try to extract from state values (formats like "(x, y)")
         for key, val in state.items():
             val_str = str(val)
             if key.lower().replace(" ", "_") in ("p1_position", "player_1_position"):
@@ -447,8 +569,6 @@ class GMAEGUIQt(QMainWindow):
                 if m:
                     p2_pos = (int(m.group(1)), int(m.group(2)))
 
-        # If positions not in state (e.g. escort adventure), scan map for 'P' chars.
-        # Both players are 'P', so just collect all P positions in order.
         if p1_pos is None or p2_pos is None:
             map_str = state.get("map", "")
             p_positions = []
@@ -478,14 +598,12 @@ class GMAEGUIQt(QMainWindow):
 
         for row_idx, row in enumerate(grid):
             for col_idx, ch in enumerate(row):
-                # Always paint background grass first (unless wall)
                 if ch != "#":
                     bg = AnimatedSpriteNode(self.sprite_pixmaps["."], col_idx, row_idx)
                     bg.setZValue(-1)
                     self.scene.addItem(bg)
 
                 if ch == "P":
-                    # Determine which player this is
                     if p1_pos and (col_idx, row_idx) == p1_pos:
                         node = AnimatedSpriteNode(self._p1_pix, col_idx, row_idx)
                         node.setZValue(2)
@@ -495,7 +613,6 @@ class GMAEGUIQt(QMainWindow):
                         node.setZValue(2)
                         self.player_nodes["p2"] = node
                     else:
-                        # Fallback: generic P sprite
                         node = AnimatedSpriteNode(self.sprite_pixmaps.get("P", self._p1_pix), col_idx, row_idx)
                         node.setZValue(2)
                     self.scene.addItem(node)
@@ -507,42 +624,15 @@ class GMAEGUIQt(QMainWindow):
 
         self.previous_map_str = map_str
 
-    def _update_map(self, old_state, new_state):
-        """Try to animate player movement; fall back to full re-render."""
-        old_map = old_state.get("map", "")
-        new_map = new_state.get("map", "")
-
-        old_p1, old_p2 = self._get_player_positions(old_state)
-        new_p1, new_p2 = self._get_player_positions(new_state)
-
-        # Animate P1
-        if "p1" in self.player_nodes and new_p1:
-            if old_p1 != new_p1:
-                self.player_nodes["p1"].animate_to(new_p1[0], new_p1[1])
-            elif self.current_player_id == 2:
-                # P1 just moved but position is same -> blocked -> shake
-                self.player_nodes["p1"].shake()
-
-        # Animate P2
-        if "p2" in self.player_nodes and new_p2:
-            if old_p2 != new_p2:
-                self.player_nodes["p2"].animate_to(new_p2[0], new_p2[1])
-            elif self.current_player_id == 1:
-                self.player_nodes["p2"].shake()
-
-        # Full re-render of non-player tiles (NPCs, hazards, relics can move)
-        self._full_map_render()
-
     # ==================================================================
-    # Stats / Turn label
+    # Stats + Player bar
     # ==================================================================
-    def _update_stats_and_turn(self):
+    def _update_stats(self):
         state = self.current_adventure.get_state()
         lines = []
         skip_keys = {"map", "map_legend", "map legend"}
         for k, v in state.items():
             if k.lower() not in skip_keys:
-                # Strip embedded "Map legend: ..." text from values
                 val_str = str(v)
                 val_str = re.sub(r'\s*Map legend:.*$', '', val_str, flags=re.IGNORECASE).strip()
                 if not val_str:
@@ -551,15 +641,14 @@ class GMAEGUIQt(QMainWindow):
                 lines.append(f"{label}: {val_str}")
         self.stats_label.setText("\n".join(lines))
 
-        # Color-coded turn label: blue for P1, red for P2
-        if self.current_player_id == 1:
-            name = self.p1_facade.get_name()
-            color = "#4488ff"
-        else:
-            name = self.p2_facade.get_name()
-            color = "#ff4444"
-        self.lbl_turn.setText(f"➤  {name}'s Turn  (Player {self.current_player_id})")
-        self.lbl_turn.setStyleSheet(f"color: {color}; padding: 4px; font-size: 16px;")
+    def _update_player_bar(self):
+        p1_name = self.p1_facade.get_name()
+        p2_name = self.p2_facade.get_name()
+        self.player_bar.setText(
+            f"<span style='color:#4488ff; font-size:15px;'>\u25a0 {p1_name} (WASD)</span>"
+            f"&nbsp;&nbsp;&nbsp;\u2694&nbsp;&nbsp;&nbsp;"
+            f"<span style='color:#ff4444; font-size:15px;'>\u25a0 {p2_name} (Arrows)</span>"
+        )
 
     # ==================================================================
     # Log
@@ -568,45 +657,10 @@ class GMAEGUIQt(QMainWindow):
         self.log_display.append(text)
 
     # ==================================================================
-    # Action handler (event-driven turn loop)
-    # ==================================================================
-    def _on_submit_action(self):
-        action = self.entry_action.text().strip()
-        if not action:
-            return
-        self.entry_action.clear()
-
-        if action.lower() == "quit":
-            self._append_log("> Adventure abandoned.")
-            self._handle_game_over("LOSS")
-            return
-
-        old_state = self.current_adventure.get_state()
-        self._append_log(f"> {action}")
-
-        result_msg = self.proxy.forward(self.current_player_id, action)
-        self._append_log(result_msg)
-
-        if result_msg.startswith("[BLOCKED]"):
-            key = "p1" if self.current_player_id == 1 else "p2"
-            if key in self.player_nodes:
-                self.player_nodes[key].shake()
-        else:
-            self.current_adventure.advance_turn()
-            self.current_player_id = 2 if self.current_player_id == 1 else 1
-
-            new_state = self.current_adventure.get_state()
-            self._update_map(old_state, new_state)
-            self._update_stats_and_turn()
-
-            status = self.current_adventure.check_completion()
-            if status != "ONGOING":
-                self._handle_game_over(status)
-
-    # ==================================================================
     # Game over
     # ==================================================================
     def _handle_game_over(self, status):
+        self._stop_game()
         adv_name = type(self.current_adventure).__name__
 
         p1_result = "WIN" if status == "WIN_P1" else ("LOSS" if status == "WIN_P2" else status)
@@ -619,8 +673,8 @@ class GMAEGUIQt(QMainWindow):
 
         messages = {
             "WIN":    "VICTORY! Well played, adventurers!",
-            "WIN_P1": f"{self.p1_facade.get_name()} WINS! 🏆",
-            "WIN_P2": f"{self.p2_facade.get_name()} WINS! 🏆",
+            "WIN_P1": f"{self.p1_facade.get_name()} WINS! \U0001f3c6",
+            "WIN_P2": f"{self.p2_facade.get_name()} WINS! \U0001f3c6",
             "LOSS":   "DEFEAT. Better luck next time.",
             "DRAW":   "DRAW. An honorable outcome!",
         }
