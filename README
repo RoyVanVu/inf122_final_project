@@ -21,7 +21,17 @@ You need Python 3.10 or newer. To check your version, open a terminal and run:
 python --version
 ```
 
-If it says 3.10 or higher you are good to go. No extra libraries are needed to play the game. If you want to run the tests, you will also need `pytest`:
+If it says 3.10 or higher you are good to go.
+
+**GUI Mode** requires PyQt5. Install it with:
+
+```
+pip install PyQt5
+```
+
+**CLI Mode** requires no extra libraries.
+
+If you want to run the tests, you will also need `pytest`:
 
 ```
 pip install pytest
